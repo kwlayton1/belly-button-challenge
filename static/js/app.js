@@ -6,12 +6,10 @@ d3.json(samples).then(function(data) {
   console.log(data);
 });
 
-// Define a function to update the charts based on the selected individual
+// Function to update the charts based on the selected individual
 function updateCharts(selectedIndividual) {
   // Use D3.js to fetch the data from your JSON file
   d3.json("samples.json").then(function(data) {
-    // Assuming your data is structured as an array of objects with "names" as IDs
-
     // Filter data for the selected individual
     const individualData = data.samples.find(sample => sample.id === selectedIndividual);
 
@@ -36,48 +34,91 @@ function updateCharts(selectedIndividual) {
     };
 
     Plotly.newPlot("bar", [trace1], layout);
+    
+    // Call the function to display demographic info
+    displayDemographicInfo(selectedIndividual, data.metadata);
+    
+    // Call the function to create the bubble chart
+    createBubbleChart(selectedIndividual, data.samples);
+    
+    // Call the function to create the gauge chart
+    createGaugeChart(selectedIndividual, data.metadata);
   });
 }
 
 // Function to create the bubble chart
-function createBubbleChart(selectedIndividual) {
-  d3.json("samples.json").then(function(data) {
-    // Assuming your data is structured as an array of objects with "names" as IDs
+function createBubbleChart(selectedIndividual, samplesData) {
+  // Filter data for the selected individual
+  const individualData = samplesData.find(sample => sample.id === selectedIndividual);
 
-    // Filter data for the selected individual
-    const individualData = data.samples.find(sample => sample.id === selectedIndividual);
+  // Define trace for the bubble chart
+  var trace2 = {
+    x: individualData.otu_ids,
+    y: individualData.sample_values,
+    text: individualData.otu_labels,
+    mode: "markers",
+    marker: {
+      size: individualData.sample_values,
+      color: individualData.otu_ids,
+      colorscale: "Earth" // You can choose a colorscale
+    }
+  };
 
-    // Define trace for the bubble chart
-    var trace2 = {
-      x: individualData.otu_ids,
-      y: individualData.sample_values,
-      text: individualData.otu_labels,
-      mode: "markers",
-      marker: {
-        size: individualData.sample_values,
-        color: individualData.otu_ids,
-        colorscale: "Earth" // You can choose a colorscale
-      }
-    };
+  var data2 = [trace2];
 
-    var data2 = [trace2];
+  var layout2 = {
+    title: `Bubble Chart for Individual ${selectedIndividual}`,
+    xaxis: { title: "OTU ID" },
+    yaxis: { title: "Sample Values" }
+  };
 
-    var layout2 = {
-      title: `Bubble Chart for Individual ${selectedIndividual}`,
-      xaxis: { title: "OTU ID" },
-      yaxis: { title: "Sample Values" }
-    };
+  // Create the bubble chart
+  Plotly.newPlot("bubble", data2, layout2);
+}
 
-    // Create the bubble chart
-    Plotly.newPlot("bubble", data2, layout2);
-  });
+// Function to create the gauge chart
+function createGaugeChart(selectedIndividual, metadata) {
+  // Filter metadata for the selected individual
+  const individualMetadata = metadata.find(item => item.id === parseInt(selectedIndividual));
+    
+  // Define the data for the gauge chart
+  const data = [
+    {
+      domain: { x: [0, 1], y: [0, 1] },
+      value: individualMetadata.wfreq,
+      title: `Belly Button Washing Frequency<br>Scrubs per Week for Individual ${selectedIndividual}`,
+      type: "indicator",
+      mode: "gauge+number",
+      gauge: {
+        axis: { range: [0, 9] },
+        steps: [
+          { range: [0, 1], color: "lightgray" },
+          { range: [1, 2], color: "lightgreen" },
+          { range: [2, 3], color: "yellow" },
+          { range: [3, 4], color: "orange" },
+          { range: [4, 5], color: "red" },
+          { range: [5, 6], color: "purple" },
+          { range: [6, 7], color: "blue" },
+          { range: [7, 8], color: "darkblue" },
+          { range: [8, 9], color: "darkpurple" }
+        ],
+      },
+    },
+  ];
+
+  // Define the layout for the gauge chart
+  const layout = { width: 400, height: 300, margin: { t: 0, b: 0 } };
+    
+  // Plot the gauge chart
+  Plotly.newPlot("gauge", data, layout);
 }
 
 // Define a function to populate the dropdown menu
 function populateDropdown() {
   d3.json("samples.json").then(function(data) {
     const dropdown = d3.select("#selDataset");
-
+    const metadata = data.metadata; // Get the metadata
+    
     // Extract the names (IDs) of individuals
     const names = data.names;
 
@@ -89,7 +130,6 @@ function populateDropdown() {
     // Initialize the charts with the first individual's data
     const initialIndividual = names[0];
     updateCharts(initialIndividual);
-    createBubbleChart(initialIndividual); // Call this function to create the bubble chart
   });
 }
 
@@ -97,8 +137,24 @@ function populateDropdown() {
 function optionChanged(selectedIndividual) {
   // Update the charts when a new individual is selected
   updateCharts(selectedIndividual);
-  createBubbleChart(selectedIndividual); // Call this function to update the bubble chart
 }
 
 // Call the function to populate the dropdown and initialize the charts
 populateDropdown();
+
+// Function to display demographic info
+function displayDemographicInfo(selectedIndividual, metadata) {
+  // Select the HTML element where you want to display the info
+  const demographicInfo = d3.select("#sample-metadata");
+  
+  // Filter metadata for the selected individual
+  const individualMetadata = metadata.find(item => item.id === parseInt(selectedIndividual));
+  
+  // Clear any existing data
+  demographicInfo.html("");
+  
+  // Iterate through the metadata and append key-value pairs
+  Object.entries(individualMetadata).forEach(([key, value]) => {
+    demographicInfo.append("p").text(`${key}: ${value}`);
+  });
+}
